@@ -3,23 +3,26 @@ import java.util.ArrayList;
 
 public class operandCollect
 {
-    final char[] OPERATOR = {'=', '+', '-', '!', '>', '<', '&', '|', '?', '~', '^', ':'};
+    final char[] OPERATOR = {'=', '+', '-', '*', '/', '%','!', '>', '<', '&', '|', '?', '~', '^', ':'};
 
     private  char holder = '0';
     private  char opCase = '0';
     private  boolean operating = false;
     ArrayList<String> codeList = new ArrayList<>();
 
-    public void parseOps(String arg)throws Exception
+    public void parseOps(BufferedReader readFile)throws Exception
     {
-        File currentFile = new File("NthPrime.java");
-        BufferedReader reader = new BufferedReader(new FileReader(currentFile));
-        StreamTokenizer streamIt = new StreamTokenizer(reader);
+        /*File currentFile = new File("NthPrime.java");
+        BufferedReader reader = new BufferedReader(new FileReader(currentFile));*/
+        StreamTokenizer streamIt = new StreamTokenizer(readFile);
 
         streamIt.slashStarComments(true);
         while(streamIt.nextToken() != streamIt.TT_EOF){
             if(streamIt.sval != null || streamIt.ttype == StreamTokenizer.TT_NUMBER) {
-                if (holder != '0' && holder != '?') {
+                if(holder == '>' && opCase == '>'){
+                    codeList.add(">>");
+                    reset();
+                } else if (holder != '0' && holder != '?') {
                     codeList.add("" + holder);
                     reset();
                 }
@@ -31,8 +34,12 @@ public class operandCollect
                 codeList.add("" + streamIt.nval);
                 operating = false;
             } else {
-                if (holder == '>' && opCase == '>' && (char) streamIt.ttype == '>') {
-                    codeList.add(">>>");
+                if (holder == '>' && opCase == '>') {
+                    if((char)streamIt.ttype == '>') {
+                        codeList.add(">>>");
+                    } else if((char)streamIt.ttype == '=') {
+                        codeList.add(">>=");
+                    }
                     reset();
                 } else if (!operating) {
                     for (char c : OPERATOR) {
@@ -56,32 +63,54 @@ public class operandCollect
                     case '=':
                         if(opCase == '=')
                             codeList.add("==");
-                        else
-                            codeList.add("=");
+                        /*else
+                            codeList.add("=");*/
                         reset();
                         break;
 
                     case '+':
                         if(opCase == '+')
                             codeList.add("++");
-                        else
-                            codeList.add("+");
+                        else if(opCase == '=')
+                            codeList.add("+=");
+                        /*else
+                            codeList.add("+");*/
                         reset();
                         break;
 
                     case '-':
                         if(opCase == '-')
                             codeList.add("--");
-                        else
-                            codeList.add("-");
+                        else if(opCase == '=')
+                            codeList.add("-=");
+                        /*else
+                            codeList.add("-");*/
+                        reset();
+                        break;
+
+                    case '*':
+                        if(opCase == '=')
+                            codeList.add("*=");
+                        reset();
+                        break;
+
+                    case '/':
+                        if(opCase == '=')
+                            codeList.add("/=");
+                        reset();
+                        break;
+
+                    case '%':
+                        if(opCase == '=')
+                            codeList.add("%=");
                         reset();
                         break;
 
                     case '!':
                         if(opCase == '=')
                             codeList.add("!=");
-                        else
-                            codeList.add("!");
+                        /*else
+                            codeList.add("!");*/
                         reset();
                         break;
 
@@ -90,8 +119,8 @@ public class operandCollect
                             codeList.add(">=");
                         else if(opCase == '>')
                             break;
-                        else
-                            codeList.add(">");
+                        /*else
+                            codeList.add(">");*/
                         reset();
                         break;
 
@@ -100,24 +129,28 @@ public class operandCollect
                             codeList.add("<=");
                         else if(opCase == '<')
                             codeList.add("<<");
-                        else
-                            codeList.add("<");
+                        /*else
+                            codeList.add("<");*/
                         reset();
                         break;
 
                     case '&':
                         if(opCase == '&')
                             codeList.add("&&");
-                        else
-                            codeList.add("&");
+                        else if(opCase == '=')
+                            codeList.add("&=");
+                        /*else
+                            codeList.add("&");*/
                         reset();
                         break;
 
                     case '|':
                         if(opCase == '|')
                             codeList.add("||");
-                        else
-                            codeList.add("|");
+                        else if(opCase == '=')
+                            codeList.add("|=");
+                        /*else
+                            codeList.add("|");*/
                         reset();
                         break;
 
@@ -127,13 +160,9 @@ public class operandCollect
                         reset();
                         break;
 
-                    case '~':
-                        codeList.add("~");
-                        reset();
-                        break;
-
                     case '^':
-                        codeList.add("~");
+                        if(opCase == '=')
+                        codeList.add("^=");
                         reset();
                         break;
 

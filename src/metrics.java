@@ -141,21 +141,35 @@ public class metrics
                 currentLetter = currentLine.charAt(i);
                 if(currentLetter == ' ')
                     isWord = false;
-                if(currentLetter != ' ' && isWord == false){
+                if(currentLetter != ' ' && !isWord){
                     wordTally++;
                     isWord = true;
                 }
             }
         }
-        reader = new BufferedReader(new FileReader(toBeRead));
 
+        reader = new BufferedReader(new FileReader(toBeRead));
         //Code Tally array order: Source Line of Code, Comment Line
         int [] codeTally = {0, 0};
         if(isSource){
             lineCollect lineCounter = new lineCollect();
             codeTally = lineCounter.getNumberOfLines(reader);
         }
+
+        reader = new BufferedReader(new FileReader(toBeRead));
+        countN(reader);
         return new int[] {lineTally, wordTally, charTally, codeTally[0], codeTally[1]};
+    }
+
+    private static int[] countN(BufferedReader readIt)throws Exception
+    {
+        operandCollect collector = new operandCollect();
+        collector.parseOps(readIt);
+        //collector.codeList
+        /*for (int i = 0; i < collector.codeList.size(); i++) {
+
+        }*/
+        return new int[] {0, 0};
     }
 
     private static void printHeader(boolean[] flags)
