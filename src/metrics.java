@@ -157,18 +157,15 @@ public class metrics
         }
 
         reader = new BufferedReader(new FileReader(toBeRead));
-        countN(reader);
+        countOperators(reader);
         return new int[] {lineTally, wordTally, charTally, codeTally[0], codeTally[1]};
     }
 
-    private static int[] countN(BufferedReader readIt)throws Exception
+    private static int[] countOperators(BufferedReader readIt)throws Exception
     {
         operandCollect collector = new operandCollect();
         collector.parseOps(readIt);
-        //collector.codeList
-        /*for (int i = 0; i < collector.codeList.size(); i++) {
-
-        }*/
+        collector.countN();
         return new int[] {0, 0};
     }
 

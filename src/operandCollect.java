@@ -1,14 +1,33 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class operandCollect
 {
-    final char[] OPERATOR = {'=', '+', '-', '*', '/', '%','!', '>', '<', '&', '|', '?', '~', '^', ':'};
+    final char[] HALF_OPERATOR = {'=', '+', '-', '*', '/', '%','!', '>', '<', '&', '|', '?', '~', '^', ':'};
+
+    final String[] FULL_OPERATOR = {"=", "==", "+", "++", "+=", "-", "--", "-=", "*", "*=", "/", "/=", "%", "%=",
+            "!", "!=", ">", ">=", ">>", ">>>", "<", "<=", "<<", "&", "&&", "&=", "|", "||", "|=", "?:", "~", "^", "^="};
 
     private  char holder = '0';
     private  char opCase = '0';
     private  boolean operating = false;
+    int N1;
+    int N2;
+    int nOne;
+    int nTwo;
+    int programVocab;
+    int programLength;
+    double calcProgLength;
+    double volume;
+    double difficulty;
+    double effort;
+    double timeReq;
+    double bugs;
     ArrayList<String> codeList = new ArrayList<>();
+    ArrayList<String> operatorList = new ArrayList<>();
+    ArrayList<String> operandList = new ArrayList<>();
 
     public void parseOps(BufferedReader readFile)throws Exception
     {
@@ -42,7 +61,7 @@ public class operandCollect
                     }
                     reset();
                 } else if (!operating) {
-                    for (char c : OPERATOR) {
+                    for (char c : HALF_OPERATOR) {
                         if (c != ':') {
                             if (c == (char) streamIt.ttype) {
                                 holder = (char) streamIt.ttype;
@@ -51,7 +70,7 @@ public class operandCollect
                         }
                     }
                 } else {
-                    for (char c : OPERATOR) {
+                    for (char c : HALF_OPERATOR) {
                         if (c == (char) streamIt.ttype) {
                             opCase = (char) streamIt.ttype;
                         }
@@ -63,8 +82,6 @@ public class operandCollect
                     case '=':
                         if(opCase == '=')
                             codeList.add("==");
-                        /*else
-                            codeList.add("=");*/
                         reset();
                         break;
 
@@ -73,8 +90,6 @@ public class operandCollect
                             codeList.add("++");
                         else if(opCase == '=')
                             codeList.add("+=");
-                        /*else
-                            codeList.add("+");*/
                         reset();
                         break;
 
@@ -83,8 +98,6 @@ public class operandCollect
                             codeList.add("--");
                         else if(opCase == '=')
                             codeList.add("-=");
-                        /*else
-                            codeList.add("-");*/
                         reset();
                         break;
 
@@ -109,8 +122,6 @@ public class operandCollect
                     case '!':
                         if(opCase == '=')
                             codeList.add("!=");
-                        /*else
-                            codeList.add("!");*/
                         reset();
                         break;
 
@@ -119,8 +130,6 @@ public class operandCollect
                             codeList.add(">=");
                         else if(opCase == '>')
                             break;
-                        /*else
-                            codeList.add(">");*/
                         reset();
                         break;
 
@@ -129,8 +138,6 @@ public class operandCollect
                             codeList.add("<=");
                         else if(opCase == '<')
                             codeList.add("<<");
-                        /*else
-                            codeList.add("<");*/
                         reset();
                         break;
 
@@ -139,8 +146,6 @@ public class operandCollect
                             codeList.add("&&");
                         else if(opCase == '=')
                             codeList.add("&=");
-                        /*else
-                            codeList.add("&");*/
                         reset();
                         break;
 
@@ -149,8 +154,6 @@ public class operandCollect
                             codeList.add("||");
                         else if(opCase == '=')
                             codeList.add("|=");
-                        /*else
-                            codeList.add("|");*/
                         reset();
                         break;
 
@@ -172,6 +175,47 @@ public class operandCollect
                 }
             }
         }
+    }
+
+    public void countN()
+    {
+        int operandIndex = -1;
+
+        for (int i = 0; i < this.codeList.size(); i++) {
+            for (String s : FULL_OPERATOR) {
+                if(this.codeList.get(i).equals(s)){
+                    if(this.codeList.get(i).equals("~")){                                               //~ is in front of operand
+                        operatorList.add(this.codeList.get(i));
+                        operandList.add(this.codeList.get(i+1));
+                        operandIndex = i+1;
+                    } else if(this.codeList.get(i).equals("++") || this.codeList.get(i).equals("--")){  //behind operand
+                        operatorList.add(this.codeList.get(i));
+                        if(i-1 != operandIndex)
+                            operandList.add(this.codeList.get(i-1));
+                    } else {                                                                            //operands on either side
+                        operatorList.add(this.codeList.get(i));
+                        operandList.add(this.codeList.get(i+1));
+                        if(i-1 != operandIndex)
+                            operandList.add(this.codeList.get(i-1));
+                        operandIndex = i+1;
+                    }
+                }
+            }
+        }
+        N1 = operatorList.size();
+        N2 = operandList.size();
+        Set<String> uniqueOperator = new HashSet<>(operatorList);
+        Set<String> uniqueOperand = new HashSet<>(operandList);
+        nOne = uniqueOperator.size();
+        nTwo = uniqueOperand.size();
+        programVocab = nOne + nTwo;
+        programLength = N1 + N2;
+        calcProgLength = nOne * (Math.log(nOne)/Math.log(2)) + nTwo * (Math.log(nTwo)/Math.log(2));
+        volume = programLength * (Math.log(programVocab)/Math.log(2));
+        difficulty = (nOne/2)*(N2/nTwo);
+        effort = difficulty * volume;
+        timeReq = effort/18;
+        bugs = volume/3000;
     }
 
     private void reset(){
