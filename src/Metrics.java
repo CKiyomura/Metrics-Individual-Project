@@ -7,14 +7,16 @@ Goal: Write a Java word count program that runs from the command line,
 accepts wild card file statements, parses simple flags and is able to
 count a source files number of comments or lines of code.
 ********************************************************************/
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-public class metrics
+public class Metrics implements IMetrics
 {
     operandCollect collector = new operandCollect();
+    docInfo totalDoc = new docInfo();
 
     //Following advice: Moved the instrucstions method to top of the class for readability
     //and self documentation
@@ -29,16 +31,16 @@ public class metrics
                 "    -w     will print the word count\n" +
                 "    -s     will print the source line of code count\n" +
                 "    -C     will print the comment count\n" +
-                "    -H     will print Halstead's metrics" +
+                "    -H     will print Halstead's Metrics" +
                 "    <filename> will print all of the above"
                 );
     }
 
-    public static void main(String[] args)throws Exception
+    /*public static void main(String[] args)throws Exception
     {
-        metrics runProg = new metrics();
+        Metrics runProg = new Metrics();
         runProg.run(args);
-    }
+    }*/
 
     public void run(String[] args)throws Exception
     {
@@ -57,9 +59,7 @@ public class metrics
 
         docInfo currDoc = new docInfo();
 
-        docInfo totalDoc = new docInfo();
         totalDoc.prepDoc();
-        //totalDoc.currentFile = "adfadsf";
 
         //collects flags from command line arguments to know which to print
         parseFlags(args, totalDoc);
@@ -98,7 +98,7 @@ public class metrics
                     totalDoc.accumulateInfo(currDoc);
                 }
                 catch (FileNotFoundException e){
-                    System.out.println("metrics: "+args[i]+": No such file or directory");
+                    System.out.println("Metrics: "+args[i]+": No such file or directory");
                 }
             }
         }
@@ -210,7 +210,7 @@ public class metrics
         currentDocument.comments = codeTally[1];
     }
 
-    //This method counts the halstead metrics of the file
+    //This method counts the halstead Metrics of the file
     private void countOperator(docInfo currentDocument)throws Exception
     {
         BufferedReader reader = new BufferedReader(new FileReader(currentDocument.currentFile));
@@ -336,9 +336,78 @@ public class metrics
             System.out.print(" ");
         }
     }
+
+    public boolean setPath(String path){
+        File test = new File(path);
+        if(test.canRead())
+            return true;
+        return false;
+    }
+
+    public boolean isSource(){
+        return totalDoc.isCode;
+    }
+
+    //basic file Metrics
+    public int getLineCount(){
+        return totalDoc.lines;
+    }
+    public int getWordCount(){
+        return totalDoc.words;
+    }
+    public int getCharacterCount(){
+        return totalDoc.chars;
+    }
+
+    //Source file Metrics
+    public int getSourceLineCount(){
+        return totalDoc.SLoC;
+    }
+    public int getCommentLineCount(){
+        return totalDoc.comments;
+    }
+
+    //Halstead Metrics
+    public int getHalsteadn1(){
+        return totalDoc.nOne;
+    }
+    public int getHalsteadn2(){
+        return totalDoc.nTwo;
+    }
+    public int getHalsteadN1(){
+        return totalDoc.N1;
+    }
+    public int getHalsteadN2(){
+        return totalDoc.N2;
+    }
+    public int getHalsteadVocabulary(){
+        return totalDoc.programVocab;
+    }
+    public int getHalsteadProgramLength(){
+        return totalDoc.programLength;
+    }
+    public int getHalsteadCalculatedProgramLenght(){
+        return (int)totalDoc.calcProgLength;
+    }
+    public int getHalsteadVolume(){
+        return (int)totalDoc.volume;
+    }
+    public int getHalsteadDifficulty(){
+        return (int)totalDoc.difficulty;
+    }
+    public int getHalsteadEffort(){
+        return (int)totalDoc.effort;
+    }
+    public int getHalsteadTime(){
+        return (int)totalDoc.timeReq;
+    }
+    public int getHalsteadBugs(){
+        return (int)totalDoc.bugs;
+    }
+
 }
 
-//This class acts as a database for metrics on a file. Additionally, it computes halstead
+//This class acts as a database for Metrics on a file. Additionally, it computes halstead
 class docInfo
 {
     File currentFile;
