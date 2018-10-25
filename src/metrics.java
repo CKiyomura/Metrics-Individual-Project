@@ -14,11 +14,11 @@ import java.util.Set;
 
 public class metrics
 {
-    static operandCollect collector = new operandCollect();
+    operandCollect collector = new operandCollect();
 
     //Following advice: Moved the instrucstions method to top of the class for readability
     //and self documentation
-    private static void instruction()
+    private void instruction()
     {
         System.out.println
                 (
@@ -36,97 +36,88 @@ public class metrics
 
     public static void main(String[] args)throws Exception
     {
+        metrics runProg = new metrics();
+        runProg.run(args);
+    }
+
+    public void run(String[] args)throws Exception
+    {
         if(args.length == 0){
             instruction();
             return;
         }
 
-        //collects flags from command line arguements to know which to print
-        boolean[] argFlags = parseFlags(args);
-        
         //keeps track of whether the file is a java, c, cpp, h, hpp
         boolean isCode = false;
-        
-        //total array collect stats this order: lines, words, char, SLoC, Comments
-        int[] totals = {0, 0, 0, 0, 0};
+
         int[] imidiates;
 
         //counter keeps track of how often files have been wordcounted
         int counter = 0;
 
-        //variables for handling operandCollect
-        int N1Total = 0;
-        int N2Total = 0;
-        int nOneTotal = 0;
-        int nTwoTotal = 0;
-        int programVocabTotal = 0;
-        int ProgramLengthTotal = 0;
-        double calcProgLengthTotal = 0;
-        double volumeTotal = 0;
-        double difficultyTotal = 0;
-        double effortTotal = 0;
-        double timeReqTotal = 0;
-        double bugsTotal = 0;
+        docInfo currDoc = new docInfo();
 
-        printHeader(argFlags);
+        docInfo totalDoc = new docInfo();
+        totalDoc.prepDoc();
+        //totalDoc.currentFile = "adfadsf";
+
+        //collects flags from command line arguments to know which to print
+        parseFlags(args, totalDoc);
+
+        printHeader(totalDoc);
 
         //at this point main attempts to read files and starts calling methods to collect stats
-        for (int i = 0; i < args.length; i++) {
+        for(int i = 0; i < args.length; i++){
             if(args[i].charAt(0) != '-') {
                 try {
-                    File currentFile = new File(args[i]);
+                    currDoc.prepDoc();
+                    currDoc.currentFile = new File(args[i]);
+                    countFile(currDoc);
+                    currDoc.matchFlags(totalDoc);
 
                     if(args[i].endsWith(".java") || args[i].endsWith(".c") || args[i].endsWith(".h")
-                            || args[i].endsWith(".cpp") || args[i].endsWith(".hpp"))
+                            || args[i].endsWith(".cpp") || args[i].endsWith(".hpp")){
                         isCode = true;
+                        countLines(currDoc);
+                    }
+                    if(totalDoc.halsFlag && isCode){
+                        countOperator(currDoc);
+                        currDoc.computeHalstead();
+                    }
 
                     counter++;
-                    imidiates = countFile(currentFile, isCode);
-                    printCount(argFlags, imidiates, args[i]);
-                    if(argFlags[5])
-                        printHalstead(collector.N1, collector.N2, collector.nOne, collector.nTwo, collector.programVocab,
-                                collector.programLength, collector.calcProgLength, collector.volume, collector.difficulty,
-                                collector.effort, collector.timeReq, collector.bugs);
-                    System.out.println("   " + currentFile);
-                    //accumulates the file by file amounts into totals.
-                    //need to add a part to accumulate source code lines
-                    for (int j = 0; j < totals.length; j++) {
-                        totals[j] += imidiates[j];
-                    }
-                    N1Total += collector.N1;
-                    N2Total += collector.N2;
-                    nOneTotal += collector.nOne;
-                    nTwoTotal += collector.nTwo;
-                    programVocabTotal += collector.programVocab;
-                    ProgramLengthTotal += collector.programLength;
-                    calcProgLengthTotal += collector.calcProgLength;
-                    volumeTotal += collector.volume;
-                    difficultyTotal += collector.difficulty;
-                    effortTotal += collector.effort;
-                    timeReqTotal += collector.timeReq;
-                    bugsTotal += collector.bugs;
+
+                    printCount(currDoc);
+
+                    if(currDoc.halsFlag)
+                        printHalstead(currDoc);
+
+                    System.out.println("   " + currDoc.currentFile);
+
+                    //need to accumulate the current info into a sum total to print later
+                    totalDoc.accumulateInfo(currDoc);
                 }
                 catch (FileNotFoundException e){
                     System.out.println("metrics: "+args[i]+": No such file or directory");
                 }
             }
         }
+
+        totalDoc.computeHalstead();
+
         if(counter <= 0){
             instruction();
-        } else 
+        } else
             if (counter > 1){
-                printCount(argFlags, totals, "total");
-                if(argFlags[5])
-                    printHalstead(N1Total, N2Total, nOneTotal, nTwoTotal, programVocabTotal, ProgramLengthTotal,
-                            calcProgLengthTotal, volumeTotal, difficultyTotal, effortTotal, timeReqTotal, bugsTotal);
+                printCount(totalDoc);
+                if(totalDoc.halsFlag)
+                    printHalstead(totalDoc);
                 System.out.println("   " + "total");
             }
     }
 
-    private static boolean[] parseFlags(String[] args)
+    private void parseFlags(String[] args, docInfo currentDocument)
     {
-        String entry;
-        char element;
         boolean lineFlag = false;
         boolean wordFlag = false;
         boolean charFlag = false;
@@ -151,17 +142,28 @@ public class metrics
                 }
             }
         }
-        //if flags were not passed then default to all true
-        if(!lineFlag && !wordFlag && !charFlag && !slocFlag && !commFlag && !halsFlag)
-            return new boolean[] {true, true, true, true, true, true};
-        //if flags were passed then deliver flags
-        return new boolean[] {lineFlag, wordFlag, charFlag, slocFlag, commFlag, halsFlag};
+        //if no flags were passed then default to all true
+        if(!lineFlag && !wordFlag && !charFlag && !slocFlag && !commFlag && !halsFlag){
+            //return new boolean[] {true, true, true, true, true, true};
+            currentDocument.lineFlag = true;
+            currentDocument.charFlag = true;
+            currentDocument.slocFlag = true;
+            currentDocument.commFlag = true;
+            currentDocument.halsFlag = true;
+        } else {
+            //if flags were passed then deliver flags
+            currentDocument.lineFlag = lineFlag;
+            currentDocument.charFlag = wordFlag;
+            currentDocument.slocFlag = charFlag;
+            currentDocument.commFlag = slocFlag;
+            currentDocument.halsFlag = halsFlag;
+        }
     }
 
     //This method parses out the actual file by line, by letter and prints the tallied results for WC.
-    private static int[] countFile(File toBeRead, boolean isSource)throws Exception
+    private void countFile(docInfo currentDocument)throws Exception
     {
-        BufferedReader reader = new BufferedReader(new FileReader(toBeRead));
+        BufferedReader reader = new BufferedReader(new FileReader(currentDocument.currentFile));
         String currentLine;
         int wordTally = 0;
         int lineTally = 0;
@@ -192,108 +194,134 @@ public class metrics
             }
         }
 
-        reader = new BufferedReader(new FileReader(toBeRead));
-        //Code Tally array order: Source Line of Code, Comment Line
+        currentDocument.lines = lineTally;
+        currentDocument.words = wordTally;
+        currentDocument.chars = charTally;
+    }
+
+    //This method counts the number of sources lines of code
+    private void countLines(docInfo currentDocument)throws Exception
+    {
+        BufferedReader reader = new BufferedReader(new FileReader(currentDocument.currentFile));
         int [] codeTally = {0, 0};
-        if(isSource){
-            lineCollect lineCounter = new lineCollect();
-            codeTally = lineCounter.getNumberOfLines(reader);
-        }
-
-        reader = new BufferedReader(new FileReader(toBeRead));
-        countOperators(reader);
-        return new int[] {lineTally, wordTally, charTally, codeTally[0], codeTally[1]};
+        lineCollect lineCounter = new lineCollect();
+        codeTally = lineCounter.getNumberOfLines(reader);
+        currentDocument.SLoC = codeTally[0];
+        currentDocument.comments = codeTally[1];
     }
 
-    private static void countOperators(BufferedReader readIt)throws Exception
+    //This method counts the halstead metrics of the file
+    private void countOperator(docInfo currentDocument)throws Exception
     {
-        collector.parseOps(readIt);
+        BufferedReader reader = new BufferedReader(new FileReader(currentDocument.currentFile));
+        collector.wipe();
+        collector.parseOps(reader);
         collector.countN();
+
+        currentDocument.N1 = collector.N1;
+        currentDocument.N2 = collector.N2;
+        currentDocument.nOne = collector.nOne;
+        currentDocument.nTwo = collector.nTwo;
     }
 
-    private static void printHeader(boolean[] flags)
+    private void printHeader(docInfo currentDocument)
     {
-        if(flags[3] || flags[4] || flags[5]) {
+        if(currentDocument.slocFlag || currentDocument.commFlag || currentDocument.halsFlag) {
+            System.out.print("  ");
             //Print Header
-            if (flags[0])
-                System.out.print("  Lines   ");
-            if (flags[1])
+            if (currentDocument.lineFlag)
+                System.out.print("Lines   ");
+            if (currentDocument.wordFlag)
                 System.out.print("Words   ");
-            if (flags[2])
+            if (currentDocument.charFlag)
                 System.out.print("Char    ");
-            if (flags[3])
+            if (currentDocument.slocFlag)
                 System.out.print("SLoC    ");
-            if (flags[4])
+            if (currentDocument.commFlag)
                 System.out.print("Comment ");
-            if (flags[5]){
-                if (flags[4]){
-                  //System.out.print("Comment");
-                    System.out.print("N1      ");
-                    System.out.print("N2      ");
-                    System.out.print("n1      ");
-                    System.out.print("n2      ");
-                    System.out.print("ProVoc  ");
-                    System.out.print("ProLen  ");
-                    System.out.print("CProLen ");
-                    System.out.print("Volume  ");
-                    System.out.print("Diff    ");
-                    System.out.print("Effort  ");
-                    System.out.print("TimeReq ");
-                    System.out.print("Bugs    ");
-                }
+            if (currentDocument.halsFlag){
+                System.out.print("N1      ");
+                System.out.print("N2      ");
+                System.out.print("n1      ");
+                System.out.print("n2      ");
+                System.out.print("ProVoc  ");
+                System.out.print("ProLen  ");
+                System.out.print("CProLen ");
+                System.out.print("Volume  ");
+                System.out.print("Diff    ");
+                System.out.print("Effort  ");
+                System.out.print("TimeReq ");
+                System.out.print("Bugs    ");
             }
             System.out.println();
         }
     }
 
     //uses the flags parsed earlier to decide which word count stats get printed
-    private static void printCount(boolean[] flags, int[] stats, String currFile)
+    private void printCount(docInfo currentDocument)
     {
-        //If the SLoC flag or comment flag is true
         System.out.print("  ");
-        int spareLength;
-        for (int i = 0; i < 5; i++) {
-            if(flags[i]){
-                System.out.print(stats[i]);
-                spareLength = 8 - (int) (Math.log10(stats[i]) + 1);
-                for (int j = 0; j < spareLength; j++) {
-                    System.out.print(" ");
-                }
-            }
+        if(currentDocument.lineFlag){
+            System.out.print(currentDocument.lines);
+            printSpacer(currentDocument.lines);
         }
-        //System.out.println("   " + currFile);
+        if(currentDocument.wordFlag){
+            System.out.print(currentDocument.words);
+            printSpacer(currentDocument.words);
+        }
+        if(currentDocument.charFlag){
+            System.out.print(currentDocument.chars);
+            printSpacer(currentDocument.chars);
+        }
+        if(currentDocument.slocFlag){
+            System.out.print(currentDocument.SLoC);
+            printSpacer(currentDocument.SLoC);
+        }
+        if(currentDocument.commFlag){
+            System.out.print(currentDocument.comments);
+            printSpacer(currentDocument.comments);
+        }
     }
 
-    private static void printHalstead(int N1, int N2, int nOne, int nTwo, int programVocab,
-                                      int programLength, double calcProgLength, double volume,
-                                      double difficulty, double effort, double timeReq, double bugs)
+    private void printHalstead(docInfo currentDocument)
     {
-        System.out.print(N1);
-        printHalsSpacer(N1);
-        System.out.print(N2);
-        printHalsSpacer(N2);
-        System.out.print(nOne);
-        printHalsSpacer(nOne);
-        System.out.print(nTwo);
-        printHalsSpacer(nTwo);
-        System.out.print(programVocab);
-        printHalsSpacer(programVocab);
-        System.out.print(programLength);
-        printHalsSpacer(programLength);
-        System.out.printf("%.2f", calcProgLength);
-        printHalsFSpacer(calcProgLength);
-        System.out.printf("%.2f", volume);
-        printHalsFSpacer(volume);
-        System.out.printf("%.2f", difficulty);
-        printHalsFSpacer( difficulty);
-        System.out.printf("%.2f", effort);
-        printHalsFSpacer(effort);
-        System.out.printf("%.2f", timeReq);
-        printHalsFSpacer(timeReq);
-        System.out.printf("%.2f", bugs);
+        System.out.print(currentDocument.N1);
+        printSpacer(currentDocument.N1);
+
+        System.out.print(currentDocument.N2);
+        printSpacer(currentDocument.N2);
+
+        System.out.print(currentDocument.nOne);
+        printSpacer(currentDocument.nOne);
+
+        System.out.print(currentDocument.nTwo);
+        printSpacer(currentDocument.nTwo);
+
+        System.out.print(currentDocument.programVocab);
+        printSpacer(currentDocument.programVocab);
+
+        System.out.print(currentDocument.programLength);
+        printSpacer(currentDocument.programLength);
+
+        System.out.printf("%.2f", currentDocument.calcProgLength);
+        printFSpacer(currentDocument.calcProgLength);
+
+        System.out.printf("%.2f", currentDocument.volume);
+        printFSpacer(currentDocument.volume);
+
+        System.out.printf("%.2f", currentDocument.difficulty);
+        printFSpacer(currentDocument.difficulty);
+
+        System.out.printf("%.2f", currentDocument.effort);
+        printFSpacer(currentDocument.effort);
+
+        System.out.printf("%.2f", currentDocument.timeReq);
+        printFSpacer(currentDocument.timeReq);
+
+        System.out.printf("%.2f", currentDocument.bugs);
     }
 
-    private static void printHalsSpacer(double num){
+    private void printSpacer(double num){
         int spareLength;
         spareLength = 8 - (int) (Math.log10(num) + 1);
         for (int j = 0; j < spareLength; j++) {
@@ -301,12 +329,109 @@ public class metrics
         }
     }
 
-    private static void printHalsFSpacer(double num){
+    private void printFSpacer(double num){
         int spareLength;
         spareLength = 5 - (int) (Math.log10(num) + 1);
         for (int j = 0; j < spareLength; j++) {
             System.out.print(" ");
         }
+    }
+}
+
+//This class acts as a database for metrics on a file. Additionally, it computes halstead
+class docInfo
+{
+    File currentFile;
+
+    boolean lineFlag;
+    boolean wordFlag;
+    boolean charFlag;
+    boolean slocFlag;
+    boolean commFlag;
+    boolean halsFlag;
+
+    boolean isCode;
+    int lines;
+    int words;
+    int chars;
+    int SLoC;
+    int comments;
+    int N1;
+    int N2;
+    int nOne;
+    int nTwo;
+    int programVocab;
+    int programLength;
+    double calcProgLength;
+    double volume;
+    double difficulty;
+    double effort;
+    double timeReq;
+    double bugs;
+
+    public void prepDoc()
+    {
+
+        lineFlag = false;
+        wordFlag = false;
+        charFlag = false;
+        slocFlag = false;
+        commFlag = false;
+        halsFlag = false;
+        isCode = false;
+        lines = 0;
+        words = 0;
+        chars = 0;
+        SLoC = 0;
+        comments = 0;
+        N1 = 0;
+        N2 = 0;
+        nOne = 0;
+        nTwo = 0;
+        programVocab = 0;
+        programLength = 0;
+        calcProgLength = 0;
+        volume = 0;
+        difficulty = 0;
+        effort = 0;
+        timeReq = 0;
+        bugs = 0;
+    }
+
+    public void matchFlags(docInfo currentDocument)
+    {
+        this.lineFlag = currentDocument.lineFlag;
+        this.wordFlag = currentDocument.wordFlag;
+        this.charFlag = currentDocument.charFlag;
+        this.slocFlag = currentDocument.slocFlag;
+        this.commFlag = currentDocument.commFlag;
+        this.halsFlag = currentDocument.halsFlag;
+    }
+
+    public void accumulateInfo(docInfo fromDoc)
+    {
+        this.lines += fromDoc.lines;
+        this.words += fromDoc.words;
+        this.chars += fromDoc.chars;
+        this.SLoC += fromDoc.SLoC;
+        this.comments += fromDoc.comments;
+        this.N1 += fromDoc.N1;
+        this.N2 += fromDoc.N2;
+        this.nOne += fromDoc.nOne;
+        this.nTwo += fromDoc.nTwo;
+    }
+
+    public void computeHalstead()
+    {
+        this.programVocab = this.nOne + this.nTwo;
+        this.programLength = this.N1 + this.N2;
+        this.calcProgLength = this.nOne * (Math.log(this.nOne)/Math.log(2))
+                + this.nTwo * (Math.log(this.nTwo)/Math.log(2));
+        this.volume = this.programLength * (Math.log(this.programVocab)/Math.log(2));
+        this.difficulty = (this.nOne/2)*(this.N2/this.nTwo);
+        this.effort = this.difficulty * this.volume;
+        this.timeReq = this.effort/18;
+        this.bugs = this.volume/3000;
     }
 }
 
@@ -324,17 +449,23 @@ class operandCollect
     int N2;
     int nOne;
     int nTwo;
-    int programVocab;
-    int programLength;
-    double calcProgLength;
-    double volume;
-    double difficulty;
-    double effort;
-    double timeReq;
-    double bugs;
-    ArrayList<String> codeList = new ArrayList<>();
-    ArrayList<String> operatorList = new ArrayList<>();
-    ArrayList<String> operandList = new ArrayList<>();
+    ArrayList<String> codeList;
+    ArrayList<String> operatorList;
+    ArrayList<String> operandList;
+
+    public void wipe()
+    {
+        holder = '0';
+        opCase = '0';
+        operating = false;
+        N1 = 0;
+        N2 = 0;
+        nOne = 0;
+        nTwo = 0;
+        codeList = new ArrayList<>();
+        operatorList = new ArrayList<>();
+        operandList = new ArrayList<>();
+    }
 
     public void parseOps(BufferedReader readFile)throws Exception
     {
@@ -515,14 +646,6 @@ class operandCollect
         Set<String> uniqueOperand = new HashSet<>(operandList);
         nOne = uniqueOperator.size();
         nTwo = uniqueOperand.size();
-        programVocab = nOne + nTwo;
-        programLength = N1 + N2;
-        calcProgLength = nOne * (Math.log(nOne)/Math.log(2)) + nTwo * (Math.log(nTwo)/Math.log(2));
-        volume = programLength * (Math.log(programVocab)/Math.log(2));
-        difficulty = (nOne/2)*(N2/nTwo);
-        effort = difficulty * volume;
-        timeReq = effort/18;
-        bugs = volume/3000;
     }
 
     private void reset(){
