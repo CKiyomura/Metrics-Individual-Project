@@ -8,13 +8,38 @@ accepts wild card file statements, parses simple flags and is able to
 count a source files number of comments or lines of code.
 ********************************************************************/
 
+import picocli.CommandLine;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Metrics implements IMetrics
+@CommandLine.Command(name = "Metrics", mixinStandardHelpOptions = true, version = "Metrics Sprint 4")
+public class Metrics implements IMetrics, Runnable
 {
+    @Option(names = { "-l", "--line" }, description = "will print the line count of a file")
+    private boolean[] lines = new boolean[0];
+
+    @Option(names = { "-c", "--character" }, description = "will print the character count")
+    private boolean[] characters = new boolean[0];
+
+    @Option(names = { "-w", "--word" }, description = "will print the word count")
+    private boolean[] words = new boolean[0];
+
+    @Option(names = { "-s", "--Source" }, description = "will print the source line of code count")
+    private boolean[] sources = new boolean[0];
+
+    @Option(names = { "-C", "--comment" }, description = "will print the comment count")
+    private boolean[] comments = new boolean[0];
+
+    @Option(names = { "-H", "--halstead" }, description = "will print Halstead's Metrics")
+    private boolean[] halsteads = new boolean[0];
+
+    @Parameters(arity = "1..*", paramLabel = "FILE", description = "File(s) to process.")
+    private File[] inputFiles;
+
     operandCollect collector = new operandCollect();
     docInfo totalDoc = new docInfo();
 
@@ -24,31 +49,21 @@ public class Metrics implements IMetrics
     {
         System.out.println
                 (
-                "Usage: java JavaWC <OPTION> <filename>\n" +
+                "Usage: java MetricsApp <OPTION> <filename>\n" +
                 "    OPTIONAL\n" +
                 "    -l     will print the line count of a file\n" +
                 "    -c     will print the character count\n" +
                 "    -w     will print the word count\n" +
                 "    -s     will print the source line of code count\n" +
                 "    -C     will print the comment count\n" +
-                "    -H     will print Halstead's Metrics" +
-                "    <filename> will print all of the above"
+                "    -H     will print Halstead's Metrics\n" +
+                "    <filename> will print all of the above\n" +
+                "    -h     will print these instructions\n"
                 );
     }
 
-    /*public static void main(String[] args)throws Exception
+    public void run()
     {
-        Metrics runProg = new Metrics();
-        runProg.run(args);
-    }*/
-
-    public void run(String[] args)throws Exception
-    {
-        if(args.length == 0){
-            instruction();
-            return;
-        }
-
         //keeps track of whether the file is a java, c, cpp, h, hpp
         boolean isCode = false;
 
@@ -62,45 +77,45 @@ public class Metrics implements IMetrics
         totalDoc.prepDoc();
 
         //collects flags from command line arguments to know which to print
-        parseFlags(args, totalDoc);
+        parseFlags(totalDoc);
 
         printHeader(totalDoc);
 
         //at this point main attempts to read files and starts calling methods to collect stats
-        for(int i = 0; i < args.length; i++){
-            if(args[i].charAt(0) != '-') {
-                try {
-                    currDoc.prepDoc();
-                    currDoc.currentFile = new File(args[i]);
-                    countFile(currDoc);
-                    currDoc.matchFlags(totalDoc);
+        for(int i = 0; i < inputFiles.length; i++){
+            try {
+                currDoc.prepDoc();
+                currDoc.currentFile = inputFiles[i];
+                countFile(currDoc);
+                currDoc.matchFlags(totalDoc);
 
-                    if(args[i].endsWith(".java") || args[i].endsWith(".c") || args[i].endsWith(".h")
-                            || args[i].endsWith(".cpp") || args[i].endsWith(".hpp")){
-                        isCode = true;
-                        countLines(currDoc);
-                    }
-                    if(totalDoc.halsFlag && isCode){
-                        countOperator(currDoc);
-                        currDoc.computeHalstead();
-                    }
-
-                    counter++;
-
-                    printCount(currDoc);
-
-                    if(currDoc.halsFlag)
-                        printHalstead(currDoc);
-
-                    System.out.println("   " + currDoc.currentFile);
-
-                    //need to accumulate the current info into a sum total to print later
-                    totalDoc.accumulateInfo(currDoc);
+                if(inputFiles[i].toString().endsWith(".java") || inputFiles[i].toString().endsWith(".c") ||
+                        inputFiles[i].toString().endsWith(".h") || inputFiles[i].toString().endsWith(".cpp") ||
+                        inputFiles[i].toString().endsWith(".hpp")){
+                    isCode = true;
+                    countLines(currDoc);
                 }
-                catch (FileNotFoundException e){
-                    System.out.println("Metrics: "+args[i]+": No such file or directory");
+                if(totalDoc.halsFlag && isCode){
+                    countOperator(currDoc);
+                    currDoc.computeHalstead();
                 }
+
+                counter++;
+
+                printCount(currDoc);
+
+                if(currDoc.halsFlag)
+                    printHalstead(currDoc);
+
+                System.out.println("   " + currDoc.currentFile);
+
+                //need to accumulate the current info into a sum total to print later
+                totalDoc.accumulateInfo(currDoc);
             }
+            catch (Exception e){
+                System.out.println("Metrics: "+inputFiles[i].toString()+": No such file or directory");
+            }
+
         }
 
         totalDoc.computeHalstead();
@@ -116,36 +131,43 @@ public class Metrics implements IMetrics
             }
     }
 
-    private void parseFlags(String[] args, docInfo currentDocument)
+    private void parseFlags(docInfo currentDocument)
     {
-        boolean lineFlag = false;
-        boolean wordFlag = false;
-        boolean charFlag = false;
-        boolean slocFlag = false;
-        boolean commFlag = false;
-        boolean halsFlag = false;
-        for (int i = 0; i < args.length; i++) {
-            if(args[i].charAt(0) == '-'){
-                for (int j = 1; j < args[i].length(); j++) {
-                    if(args[i].charAt(j)=='l')
-                        lineFlag = true;
-                    if(args[i].charAt(j)=='w')
-                        wordFlag = true;
-                    if(args[i].charAt(j)=='c')
-                        charFlag = true;
-                    if(args[i].charAt(j)=='s')
-                        slocFlag = true;
-                    if(args[i].charAt(j)=='C')
-                        commFlag = true;
-                    if(args[i].charAt(j)=='H')
-                        halsFlag = true;
-                }
-            }
-        }
+        boolean lineFlag;
+        boolean wordFlag;
+        boolean charFlag;
+        boolean slocFlag;
+        boolean commFlag;
+        boolean halsFlag;
+        if(lines.length < 1)
+            lineFlag = false;
+        else
+            lineFlag = true;
+        if(words.length < 1)
+            wordFlag = false;
+        else
+            wordFlag = true;
+        if(characters.length < 1)
+            charFlag = false;
+        else
+            charFlag = true;
+        if(sources.length < 1)
+            slocFlag = false;
+        else
+            slocFlag = true;
+        if(comments.length < 1)
+            commFlag = false;
+        else
+            commFlag = true;
+        if(halsteads.length < 1)
+            halsFlag = false;
+        else
+            halsFlag = true;
         //if no flags were passed then default to all true
         if(!lineFlag && !wordFlag && !charFlag && !slocFlag && !commFlag && !halsFlag){
             //return new boolean[] {true, true, true, true, true, true};
             currentDocument.lineFlag = true;
+            currentDocument.wordFlag = true;
             currentDocument.charFlag = true;
             currentDocument.slocFlag = true;
             currentDocument.commFlag = true;
@@ -153,9 +175,10 @@ public class Metrics implements IMetrics
         } else {
             //if flags were passed then deliver flags
             currentDocument.lineFlag = lineFlag;
-            currentDocument.charFlag = wordFlag;
-            currentDocument.slocFlag = charFlag;
-            currentDocument.commFlag = slocFlag;
+            currentDocument.wordFlag = wordFlag;
+            currentDocument.charFlag = charFlag;
+            currentDocument.slocFlag = slocFlag;
+            currentDocument.commFlag = commFlag;
             currentDocument.halsFlag = halsFlag;
         }
     }

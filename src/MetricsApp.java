@@ -1,7 +1,9 @@
+import picocli.CommandLine;
+
 public class MetricsApp {
-    public static void main(String[] args)throws Exception
+    public static void main(String[] args)
     {
         IMetrics myMetrics = new Metrics();
-        ((Metrics) myMetrics).run(args);
+        CommandLine.run((Metrics) myMetrics, args);
     }
 }
